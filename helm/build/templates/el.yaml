@@ -1,0 +1,40 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: {{ .Values.app.name }}-el
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - name: push-trig
+      bindings:
+        - kind: ClusterTriggerBinding
+          ref: github-push
+      interceptors:
+        - params:
+            - name: eventTypes
+              value: ["push"]
+          ref:
+            name: github
+        - params:
+            - name: git-revision
+              value: >-
+                (body.ref.contains('{{ .Values.git.branch }}'))
+            - name: overlays
+              value: null
+          ref:
+            name: cel
+      template:
+        ref: {{ .Values.app.name }}-run-build
+    - name: create-trig
+      bindings:
+        - kind: ClusterTriggerBinding
+          ref: github-create
+      interceptors:
+        - params:
+            - name: eventTypes
+              value: ["create"]
+          ref:
+            name: github
+      template:
+        ref: {{ .Values.app.name }}-run-promote
